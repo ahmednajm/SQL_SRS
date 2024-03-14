@@ -1,3 +1,5 @@
 .idea/
 najm_venv/
 *.csv
+tst_db.py
+data/
