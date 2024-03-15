@@ -1,73 +1,57 @@
 # pylint: disable=missing-module-docstring
-
-import io
+import ast
 
 import duckdb
-import pandas as pd
 import streamlit as st
 
-CSV = """
-beverage,price
-orange juice,2.5
-Expresso,2
-Tea,3
-"""
-beverages = pd.read_csv(io.StringIO(CSV))
+con = duckdb.connect(database='data/exercises_sql_tables.duckdb', read_only=False)
 
-CSV2 = """
-food_item,food_price
-cookie juice,2.5
-chocolatine,2
-muffin,3
-"""
-food_items = pd.read_csv(io.StringIO(CSV2))
+#solution_df = duckdb.query(ANSWER_STR).df()
 
-ANSWER_STR = """
-SELECT * FROM beverages
-CROSS JOIN food_items
-"""
-solution_df = duckdb.query(ANSWER_STR).df()
-
-st.write(
-    """
-# SQL SRS
+st.text("""
+######  SQL SRS  ######
 Spaced Repetition System
-SQL Practice
+      SQL Practice
 """
-)
+         )
 
 with st.sidebar:
-    Option = st.selectbox(
+    Theme = st.selectbox(
         "What would you like to review",
-        ("Joins", "Group By", "Windows Functions"),
+        ("cross_joins", "Group By", "window_functions"),
         index=None,
         placeholder="Select a theme...",
     )
-    st.write(f"you have selected {Option}")
+    st.write(f"you have selected {Theme}")
+    exercise = con.execute(f" select * from memory_state where theme='{Theme}' ").df()
+    st.write(exercise)
 
-st.header("enter your code:")
-query = st.text_area(label="your SQL code here", key="user_input")
+st.header("Enter your code:")
+query = st.text_area(label="",
+                     key="user_input")
 if query:
-    result = duckdb.sql(query).df()
+    result = con.execute(query).df()
     st.dataframe(result)
-
-    try:
-        result = result[solution_df.columns]
-        st.dataframe(result.compare(solution_df))
-    except KeyError as e:
-        st.write("some columns are missing")
-
-    n_line_difference = result.shape[0] - solution_df.shape[0]
-    if n_line_difference != 0:
-        st.write(f"result has {n_line_difference} line difference with the solution_df")
-
+#
+#    try:
+#        result = result[solution_df.columns]
+#        st.dataframe(result.compare(solution_df))
+#    except KeyError as e:
+#        st.write("some columns are missing")
+#
+#    n_line_difference = result.shape[0] - solution_df.shape[0]
+#    if n_line_difference != 0:
+#        st.write(f"result has {n_line_difference} line difference with the solution_df")
+#
 tab2, tab3 = st.tabs(["Tables", "Solutions"])
 with tab2:
-    st.write("Table: beverages")
-    st.dataframe(beverages)
-    st.write("Table: food_items")
-    st.dataframe(food_items)
-    st.write("expected:")
-    st.dataframe(solution_df)
+    exercise_tables = ast.literal_eval(exercise.loc[0, "tables"])
+    for table in exercise_tables:
+        st.write(f'table : {table}')
+        table_df = con.execute(f'select * from {table}').df()
+        st.write(table_df)
 with tab3:
-    st.write(ANSWER_STR)
+    exercise_name = exercise.loc[0, "exercise_name"]
+    with open(f"answers/{exercise_name}.sql", "r") as f:
+        answer = f.read()
+    st.text(answer)
